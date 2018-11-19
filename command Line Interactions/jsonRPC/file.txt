@@ -1,0 +1,4 @@
+nc -U /Users/nitishbhushan/Library/Ethereum/net42/geth.ipc
+
+{"jsonrpc":"2.0","method":"eth_accounts","params":[],"id":1}
+{"jsonrpc":"2.0","method":"eth_getBalance","params":["0xb0ac6faad5b2650f60c8f45b7c91c81cb98da779","latest"],"id":"2"}
