@@ -17,21 +17,23 @@ contract Splitter2{
  event LogBalance(address addr, uint balance);
  
  constructor(address[] addrs) public{
-     owner = msg.sender; // this is contract owner who will receive amount if other than Alice send the deposit amount 
-     require(addrs.length == 3); // this is specific contract to accept three address. 
-     require(addrs[0] != address(0));
-     require(addrs[1] != address(0));
-     require(addrs[2] != address(0));
+    require(addrs.length == 3); // this is specific contract to accept three address. 
+    require(addrs[0] != address(0));
+    require(addrs[1] != address(0));
+    require(addrs[2] != address(0));
      
-     Alice = addrs[0];
-     Bob = addrs[1];
-     Carol = addrs[2];
+    owner = msg.sender; // this is contract owner who will receive amount if other than Alice send the deposit amount 
+   
+    Alice = addrs[0];
+    Bob = addrs[1];
+    Carol = addrs[2];
      
-     emit LogAddressInitialized(Alice, Bob, Carol);
+    emit LogAddressInitialized(Alice, Bob, Carol);
  }
   
- function deposit (uint amount) public payable {
-     require(amount >0);
+ function deposit (uint amount) public payable returns(bool){
+     require(amount >0); 
+     
      if(msg.sender == Alice) {
          emit LogDepositMode("split mode deposit");
          multiDeposit(Bob, Carol, amount);
@@ -41,16 +43,18 @@ contract Splitter2{
             balance[owner] += amount;
             emit LogFundsDeposited(owner,amount);
      }
-  
+    return true;
  }
  
- function withdrawal(uint amount) public payable {
-     require(balance[msg.sender]> amount);
+ function withdrawal(uint amount) public payable returns(bool){
+    require(balance[msg.sender]> amount);
     
-     balance[msg.sender] -= amount;
-     emit LogFundsWithdrawn(msg.sender,amount);
+    balance[msg.sender] -= amount;
+    emit LogFundsWithdrawn(msg.sender,amount);
       
-     msg.sender.transfer(amount);  // method call to actually perform the operation
+    msg.sender.transfer(amount);  // method call to actually perform the operation
+     
+    return true;
  }
  
  function multiDeposit(address receiver1, address receiver2, uint amount) public payable returns(bool) {
@@ -60,10 +64,11 @@ contract Splitter2{
      
      uint depositAmount = amount/2;   // amount must be even 
      
+     emit LogFundSplit(msg.sender, amount,receiver1, receiver2 );
+     
      balance[receiver1] += depositAmount;
      balance[receiver2] += depositAmount;
      
-     LogFundSplit(msg.sender, amount,receiver1, receiver2 );
      emit LogFundsDeposited(receiver1,depositAmount);
      emit LogFundsDeposited(receiver2,depositAmount);
      
