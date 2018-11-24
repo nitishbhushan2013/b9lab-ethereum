@@ -29,8 +29,7 @@ contract Splitter {
         }
     }
     
-    function constructParticipant(address [] addr) private {   // this must not be called from other public contract. 
-        require(owner == msg.sender);
+    function constructParticipant(address [] addr) public {
         require(addr.length == 3,"there must be three addresses");
         
         Person memory Alice = Person(addr[0], "Alice", 20);
@@ -61,15 +60,19 @@ contract Splitter {
             Person memory carol = persons[2];
             
             balances[bob.deployedAddress].balance += amount/2;
+            bob.deployedAddress.transfer(amount/2);
             emit LogTransferAmount(msg.sender,bob.deployedAddress,amount/2);
            
             balances[carol.deployedAddress].balance += amount/2;
+            carol.deployedAddress.transfer(amount/2);
             emit LogTransferAmount(msg.sender,carol.deployedAddress,amount/2);
         } 
         else {
             balances[owner].balance +=amount;
+            owner.transfer(amount);
             emit LogTransferAmount(msg.sender,owner,amount);
         }
+        
     }
     
     function getBalance(address addr) view public returns(uint) { // this will not change the world state
