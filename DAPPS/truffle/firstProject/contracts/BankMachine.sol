@@ -1,29 +1,27 @@
 pragma solidity ^0.4.25;
 
 contract BankMachine{
- address owner;
- 
+
  mapping(address => uint) balance;
  
- event LogDeposit(address from, uint amount);
- event LogWithdrawal(address from, uint amount);
- 
+ event sender(address from, uint amount);
+ event receiver(address from, uint amount);
  
  constructor() public {
-     owner = msg.sender;
  }
  
  function deposit (uint amount) public payable {
+     require(amount >0);
      balance[msg.sender] += amount;
-     emit LogDeposit(msg.sender,amount);
+     emit sender(msg.sender,amount);
  }
  
- function withdrawal(uint amount) public payable returns(bool) {
+ function withdrawal(uint amount) public payable {
      require(balance[msg.sender]> amount);
     
      balance[msg.sender] -= amount;
-     emit LogWithdrawal(msg.sender,amount);
+     msg.sender.transfer(amount);
      
-     return true;
+     emit receiver(msg.sender,amount);
  }
 }
