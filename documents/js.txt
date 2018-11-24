@@ -1,0 +1,31 @@
+var promise ={
+    then : function();
+    error : function();
+}
+
+fetch("bears.json").then(function(bears){
+    console.log(bears);
+    fetch("animal.json").then(function(animal){
+        console.log(animal)
+    }).error(function(err){
+        console.log(err);
+    })
+}).error(function(err){
+    console.log(err);
+})
+
+
+fetch("bears.json").then(function(bear){
+    console.log(bear);
+    return fetch("animal.json");
+}).then(function(animal){
+    console.log(animal)
+}).error(function(err){
+    console.log(err);
+})
+
+
+
+
+MetaCoin.deployed()
+.then(instance => )

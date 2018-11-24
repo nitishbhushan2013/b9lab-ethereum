@@ -1,0 +1,1 @@
+geth --testnet --syncmode light --ipcpath /Users/nitishbhushan/Library/Ethereum/testnet/geth.ipc 

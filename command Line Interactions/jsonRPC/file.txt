@@ -2,3 +2,19 @@ nc -U /Users/nitishbhushan/Library/Ethereum/net42/geth.ipc
 
 {"jsonrpc":"2.0","method":"eth_accounts","params":[],"id":1}
 {"jsonrpc":"2.0","method":"eth_getBalance","params":["0xb0ac6faad5b2650f60c8f45b7c91c81cb98da779","latest"],"id":"2"}
+
+{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":"3"}
+{"jsonrpc":"2.0","method":"eth_getBalance","params":["0xb0ac6faad5b2650f60c8f45b7c91c81cb98da779","0x1b"],"id":"2"}
+
+
+
+RPC 
+----
+RPC
+Using IPC, although secure, is not always feasible, in particular when Geth is in your VM and you want to communicate with Geth from outside of the VM, or when you make a node publicly available to your users. There comes RPC over HTTP. In Geth, you need to explicitly enable this vulnerability feature. 
+
+geth --datadir ~/Library/Ethereum/net42 --networkid 42 --rpc --rpcaddr 0.0.0.0 --rpcport 8545 --rpccorsdomain "*" --rpcapi "eth,web3,net"
+
+curl -X POST -H "content-type:application/json" localhost:8545 --data '{"jsonrpc":"2.0","method":"eth_accounts","params":[],"id":1}'
+
+curl -X POST -H "content-type:application/json" localhost:8545 --data '{{"jsonrpc":"2.0","method":"eth_getBalance","params":["0xb0ac6faad5b2650f60c8f45b7c91c81cb98da779","latest"],"id":"2"}'
