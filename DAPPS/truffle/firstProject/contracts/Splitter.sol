@@ -1,82 +1,66 @@
 pragma solidity ^0.4.25;
 
+contract Splitter2{
 
-contract Splitter {
-    address owner;  // this is contract owner
-    struct Person{   // This stores the users details
-        address deployedAddress;
-        bytes32 name;
-        uint balance;
-    }
-    mapping (address => Person) balances;
-    Person[] persons;
+ address public Alice;
+ address public Bob;
+ address public Carol;
+ 
+ mapping(address => uint) balance;
+ 
+ event LogAddressInitialized(address Alice, address Bob, address Carol);
+ event LogDepositMode(bytes32 mode ); // split mode or single mode
+ event LogFundsDeposited(address from, uint amount);
+ event LogFundsWithdrawn(address from, uint amount);
+ event LogFundSplit(address from, uint amount, address receiver1, address receiver2);
+ 
+ constructor(address[] addrs) public{
+     require(addrs.length == 3); // this is specific contract to accept three address. 
+     
+     Alice = addrs[0];
+     Bob = addrs[1];
+     Carol = addrs[2];
+     
+     emit LogAddressInitialized(Alice, Bob, Carol);
+ }
+  
+ function deposit (uint amount) public payable {
+     require(amount >0);
+     if(msg.sender == Alice) {
+         emit LogDepositMode("split mode deposit");
+         multiDeposit(Bob, Carol, amount);
+     }
+     else {
+            LogDepositMode("single deposit");
+            balance[msg.sender] += amount;
+            emit LogFundsDeposited(msg.sender,amount);
+     }
+  
+ }
+ 
+ function withdrawal(uint amount) public payable {
+     require(balance[msg.sender]> amount);
     
-    
-    event LogTransferAmount(address from, address to, uint amount);
-    event LogIdentityCreated(address addr, bytes32 name, uint amount);
-
-    constructor( address[] addr)  public {
-        owner = msg.sender;
-        Person memory contractOwner = Person({
-              deployedAddress : msg.sender,
-              name : "contractOwner",
-              balance: 1000
-            });
-        balances[msg.sender] = contractOwner;
-    
-        if(addr.length == 3){
-            constructParticipant(addr);
-        }
-    }
-    
-    function constructParticipant(address [] addr) public {
-        require(addr.length == 3,"there must be three addresses");
-        
-        Person memory Alice = Person(addr[0], "Alice", 20);
-        Person memory Bob = Person(addr[1], "Bob", 10);
-        Person memory Carol = Person(addr[2], "Carol", 10);
-        
-        persons.push(Alice);                                 // first person pushed  
-        emit LogIdentityCreated(addr[0], "Alice", 20);
-        
-        persons.push(Bob);                                   // second person pushed 
-        emit LogIdentityCreated(addr[1], "Bob", 10);
-        
-        persons.push(Carol);                                 // third person pushed 
-        emit LogIdentityCreated(addr[2], "Carol", 10);    
-        
-        balances[addr[0]] = Alice;
-        balances[addr[1]] = Bob;
-        balances[addr[2]] = Carol;
-    }
-    
-    function sendAmount(uint amount) public payable { // amount is sent to this contract and so no dedicated 'to' address was passed
-        require(balances[msg.sender].balance >= amount); // check enough amount
-        
-        balances[msg.sender].balance -= amount;
-        
-        if(balances[msg.sender].name == "Alice"){ // Alice has initiated the transaction, apply business rule 
-            Person memory bob = persons[1];
-            Person memory carol = persons[2];
-            
-            balances[bob.deployedAddress].balance += amount/2;
-            bob.deployedAddress.transfer(amount/2);
-            emit LogTransferAmount(msg.sender,bob.deployedAddress,amount/2);
-           
-            balances[carol.deployedAddress].balance += amount/2;
-            carol.deployedAddress.transfer(amount/2);
-            emit LogTransferAmount(msg.sender,carol.deployedAddress,amount/2);
-        } 
-        else {
-            balances[owner].balance +=amount;
-            owner.transfer(amount);
-            emit LogTransferAmount(msg.sender,owner,amount);
-        }
-        
-    }
-    
-    function getBalance(address addr) view public returns(uint) { // this will not change the world state
-        return balances[addr].balance;
-    }
-    
+     balance[msg.sender] -= amount;
+     emit LogFundsWithdrawn(msg.sender,amount);
+      
+     msg.sender.transfer(amount);  // method call to actually perform the operation
+ }
+ 
+ function multiDeposit(address receiver1, address receiver2, uint amount) public payable returns(bool) {
+     require(amount >0);
+     require(receiver1 != address(0));
+     require(receiver2 != address(0));
+     
+     uint depositAmount = amount/2;   // amount must be even 
+     
+     balance[receiver1] += depositAmount;
+     balance[receiver2] += depositAmount;
+     
+     LogFundSplit(msg.sender, amount,receiver1, receiver2 );
+     emit LogFundsDeposited(receiver1,depositAmount);
+     emit LogFundsDeposited(receiver2,depositAmount);
+     
+     return true;
+ }
 }
