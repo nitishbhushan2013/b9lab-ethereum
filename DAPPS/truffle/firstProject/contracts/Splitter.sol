@@ -5,6 +5,7 @@ contract Splitter2{
  address public Alice;
  address public Bob;
  address public Carol;
+ address owner;
  
  mapping(address => uint) balance;
  
@@ -13,9 +14,14 @@ contract Splitter2{
  event LogFundsDeposited(address from, uint amount);
  event LogFundsWithdrawn(address from, uint amount);
  event LogFundSplit(address from, uint amount, address receiver1, address receiver2);
+ event LogBalance(address addr, uint balance);
  
  constructor(address[] addrs) public{
+     owner = msg.sender; // this is contract owner who will receive amount if other than Alice send the deposit amount 
      require(addrs.length == 3); // this is specific contract to accept three address. 
+     require(addrs[0] != address(0));
+     require(addrs[1] != address(0));
+     require(addrs[2] != address(0));
      
      Alice = addrs[0];
      Bob = addrs[1];
@@ -32,8 +38,8 @@ contract Splitter2{
      }
      else {
             LogDepositMode("single deposit");
-            balance[msg.sender] += amount;
-            emit LogFundsDeposited(msg.sender,amount);
+            balance[owner] += amount;
+            emit LogFundsDeposited(owner,amount);
      }
   
  }
@@ -63,4 +69,9 @@ contract Splitter2{
      
      return true;
  }
+ 
+ function getBalance(address addr) view public returns(uint) { // this will not change the world state
+        emit LogBalance(addr, balance[addr]);
+        return balance[addr];
+    }
 }
