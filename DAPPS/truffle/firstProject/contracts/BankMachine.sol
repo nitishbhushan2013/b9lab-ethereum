@@ -4,16 +4,17 @@ contract BankMachine{
 
  mapping(address => uint) balance;
  
- event sender(address from, uint amount);
- event receiver(address from, uint amount);
+ event LogFundsDeposited(address from, uint amount);
+ event LogFundsWithdrawn(address from, uint amount);
  
- constructor() public {
+ constructor() public{
+     
  }
- 
+  
  function deposit (uint amount) public payable {
      require(amount >0);
      balance[msg.sender] += amount;
-     emit sender(msg.sender,amount);
+     emit LogFundsDeposited(msg.sender,amount);
  }
  
  function withdrawal(uint amount) public payable {
@@ -22,6 +23,21 @@ contract BankMachine{
      balance[msg.sender] -= amount;
      msg.sender.transfer(amount);
      
-     emit receiver(msg.sender,amount);
+     emit LogFundsWithdrawn(msg.sender,amount);
+ }
+ 
+ function multiDeposit(address addr1, address addr2, uint amount) public payable returns(bool) {
+     require(amount >0);
+     
+     uint depositAmount = amount/2;
+     
+     balance[addr1] += depositAmount;
+     balance[addr2] += depositAmount;
+     
+     addr1.transfer(depositAmount);
+     emit LogFundsDeposited(addr1,depositAmount);
+     addr2.transfer(depositAmount);
+     emit LogFundsDeposited(addr2,depositAmount);
+     
  }
 }
