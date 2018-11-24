@@ -29,7 +29,8 @@ contract Splitter {
         }
     }
     
-    function constructParticipant(address [] addr) public {
+    function constructParticipant(address [] addr) private {   // this must not be called from other public contract. 
+        require(owner == msg.sender);
         require(addr.length == 3,"there must be three addresses");
         
         Person memory Alice = Person(addr[0], "Alice", 20);
