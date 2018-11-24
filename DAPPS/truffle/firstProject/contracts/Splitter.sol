@@ -15,6 +15,7 @@ contract Splitter2{
  event LogFundsWithdrawn(address from, uint amount);
  event LogFundSplit(address from, uint amount, address receiver1, address receiver2);
  event LogBalance(address addr, uint balance);
+ event LogContractDistruct(address owner);
  
  constructor(address[] addrs) public{
     require(addrs.length == 3); // this is specific contract to accept three address. 
@@ -52,16 +53,19 @@ contract Splitter2{
     balance[msg.sender] -= amount;
     emit LogFundsWithdrawn(msg.sender,amount);
       
-    msg.sender.transfer(amount);  // method call to actually perform the operation
+    msg.sender.transfer(amount);  // rely on pull mechanism to pull the amount. msg.sender is 'trusted' address.
      
     return true;
  }
  
  function multiDeposit(address receiver1, address receiver2, uint amount) public payable returns(bool) {
-     require(amount >0);
+     require(msg.value >0);
      require(receiver1 != address(0));
      require(receiver2 != address(0));
      
+     if(amount %2 !=0) { // if its not even, get the even. 1 wei would send back to contract 
+         amount = amount -1;
+     }
      uint depositAmount = amount/2;   // amount must be even 
      
      emit LogFundSplit(msg.sender, amount,receiver1, receiver2 );
@@ -78,5 +82,17 @@ contract Splitter2{
  function getBalance(address addr) view public returns(uint) { // this will not change the world state
         emit LogBalance(addr, balance[addr]);
         return balance[addr];
+    }
+    
+    function kill() public returns(bool) {
+        require(owner == msg.sender);
+        
+        emit LogContractDistruct(owner);
+        selfdestruct(owner);
+        return true;
+    }
+     
+    function () public payable {  // fallback function : allow to send ether back to contract.
+    
     }
 }
