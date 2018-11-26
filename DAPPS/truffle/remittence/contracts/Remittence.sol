@@ -9,6 +9,8 @@ contract Remittence {
     uint creationTime;
     uint deadLineLimit;
 
+    address public Carol;
+
     event LogContractInitialized(address byWhom, uint amountDeposited);
     event LogWithdrawRemittenceAmountInvoked(address from);
     event LogWithdrawRemittenceAmountSuccessed(address from, bytes32 password1, bytes32 password2, uint amountWithdrawan);
@@ -27,13 +29,15 @@ contract Remittence {
 
 
     // Alice has deployed the contract with ether in it and puzzle
-    constructor (uint  _deadLineLimit) public payable{
+    constructor (uint  _deadLineLimit, address _CarolAddress) public payable{
         require(msg.value > 0, "ether amount must be greater than 0");
 
         owner = msg.sender;
         amount = msg.value;
         creationTime = now;
         deadLineLimit = _deadLineLimit;
+        Carol = _CarolAddress;
+
         /**Let the secrert key be part of the contract code. This way, keys won't exposed to the outside
         world through anymeans. Since Alice is deploying this contract, she knows these keys */
         puzzleSecretvalue = keccak256(abi.encodePacked("alice123", "123alice")); 
@@ -43,6 +47,7 @@ contract Remittence {
     /**This is a public function and hence can be invoked by any person.  */
     function withdrawRemittenceAmount(bytes32 password_bob, bytes32 password_carol) public payable returns(bool) {
         require(msg.sender != address(0), "contract invoking address must not be zero address");
+        require(msg.sender == Carol, "Only carol can invoke the Remittemce contract");
         require(amount > 0, "withdrawal amount must be more than 0.");
 
         emit LogWithdrawRemittenceAmountInvoked(msg.sender);
@@ -64,6 +69,7 @@ contract Remittence {
     }
 
     function kill() public onlyBy(owner) returns(bool){
+        emit LogContractDistruct(owner);
         selfdestruct(owner);
         return true;
     }
