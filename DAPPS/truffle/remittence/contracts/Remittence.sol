@@ -1,35 +1,33 @@
 pragma solidity ^0.5.0;
 
-/**This contract is deployed by Alice with ether and inbuilt puzzle with two secret keys. 
-Anyone can solve the puzzle and withdraw the ether */
+/**This contract is deployed by Alice with ether and inbuilt puzzle with two secret keys.
+Carol can only invoke Alice contract by submitting both the password. If password are correct then withdraw the
+ ether. */
 contract Remittence {
     address public owner;
-    uint public amount;
-    bytes32 puzzleSecretvalue;
-    uint creationTime;
-    uint deadLineLimit;
-
     address public Carol;
-
-    mapping(address => uint) balances;
-
-    event LogContractInitialized(address byWhom, uint amountDeposited);
+    uint public amount;
+    uint totalWithdrawalAmount;
+    uint deadLineLimit;
+    bytes32 puzzleSecretvalue;
+   
+    event LogContractInitialized(address indexed byWhom, uint amountDeposited);
     event LogWithdrawRemittenceAmountInvoked(address from);
-    event LogWithdrawRemittenceAmountSuccessed(address from, bytes32 password1, bytes32 password2, uint amountWithdrawan);
-    event LogWithDrawUnclaimedAmountCompleted(address byWhom, uint howMuch);
+    event LogWithdrawRemittenceAmountSuccessed(address indexed from, bytes32 password1, bytes32 password2, uint indexed totalWithdrawalAmount);
+    event LogWithdrawUnclaimedAmountCompleted(address byWhom, uint totalWithdrawalAmount);
     event LogContractDistruct(address owner);
     
-    modifier onlyByOWner(address _owner) {
+    modifier onlyByOwner(address _owner) {
         require(_owner == owner, "address must be contract owner");
         _;
     }
 
-    modifier onlyAfter(uint _deadLineLimit){
-        require(now > _deadLineLimit,"activity must occur after time line");
+    modifier onlyAfterDeadLine {
+        require(now > deadLineLimit,"activity must occur after deadline");
         _;
     }
-    modifier onlyBefore(uint _deadLineLimit){
-        require(now < _deadLineLimit,"activity must occur before time line");
+    modifier onlyBeforeDeadLine {
+        require(now < deadLineLimit,"activity must occur before deadline");
         _;
     }
 
@@ -38,52 +36,53 @@ contract Remittence {
         require(msg.value > 0, "ether amount must be greater than 0");
 
         owner = msg.sender;
-        amount = msg.value;
-        creationTime = now;
-        deadLineLimit = _deadLineLimit;
+        amount = msg.value; 
+        deadLineLimit = now + _deadLineLimit days;
         Carol = _CarolAddress;
         puzzleSecretvalue = secretValue;
-        balances[owner] += msg.value;
-
+      
         emit LogContractInitialized(owner, amount);
     }
 
-    /**This is a public function and hence can be invoked by any person.  */
-    function withdrawRemittenceAmount(bytes32 password_bob, bytes32 password_carol) public 
-    onlyBefore(creationTime+deadLineLimit)
+    /**
+     * As per given specification, only Carol can call this function.
+     */
+    function withdrawRemittenceAmount(bytes32 password_bob, bytes32 password_carol) public
+    onlyBeforeDeadLine
     returns(bool) {
-        require(msg.sender != address(0), "contract invoking address must not be zero address");
+        require(msg.sender == Carol, "only Carol can invoke this function");
         require(amount > 0, "withdrawal amount must be more than 0.");
         require(puzzleSecretvalue == keccak256(abi.encodePacked(password_bob,password_carol)),"password mismatch,not authorized to withdraw the amount");
         emit LogWithdrawRemittenceAmountInvoked(msg.sender);
 
         //accounting
-        balances[msg.sender] += amount;
-        balances[owner] -= amount;
-        msg.sender.transfer(amount);
-        
-        emit LogWithdrawRemittenceAmountSuccessed(msg.sender,password_bob,password_carol,amount);
+        totalWithdrawalAmount = amount;
+        amount = 0; // counter reentrant attack
+        emit LogWithdrawRemittenceAmountSuccessed(msg.sender,password_bob,password_carol,totalWithdrawalAmount);
+        msg.sender.transfer(totalWithdrawalAmount);
+         
         return true;
     }
 
-    function withdrawUnclaimedEther() private 
-    onlyByOWner(owner) 
-    onlyAfter(creationTime+deadLineLimit) 
+    function withdrawUnclaimedEther() public
+    onlyByOwner(owner) // only by Alice as she only created and deployed this contract
+    onlyAfterDeadLine
     returns(bool) {
         require(amount > 0, "ether must be there to withdraw");
-        require(msg.sender == Carol, "Only carol can invoke the Remittemce contract");
-        emit LogWithDrawUnclaimedAmountCompleted(msg.sender, msg.value);
-        balances[owner] -= msg.value;
-        msg.sender.transfer(msg.value);
+      
+        emit LogWithdrawUnclaimedAmountCompleted(msg.sender, amount);
+        
+        //accounting
+        totalWithdrawalAmount = amount; 
+        amount = 0;
+        msg.sender.transfer(totalWithdrawalAmount);
         return true;
     }
 
-    function kill() public onlyByOWner(owner) returns(bool){
+    function kill() public onlyByOwner(owner) returns(bool){
         emit LogContractDistruct(owner);
         selfdestruct(owner);
         return true;
     }
 
 }
-
-
