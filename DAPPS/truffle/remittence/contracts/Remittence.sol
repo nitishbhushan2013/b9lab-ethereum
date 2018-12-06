@@ -9,12 +9,12 @@ ether.
 @ code style - all the private state variables and private internal functions starts with '_'.
 **/
 contract Remittence is Pausable{
-    address private _owner;
-    address private _Carol;
-    uint private _amount;
-    uint private _durationLimit;
-    bytes32 private _puzzleSecretvalue;
-    bool private _puzzleSecretValueSet = false;
+    address public _owner;
+    address public _Carol;
+    uint public _amount;
+    uint public _durationLimit;
+    bytes32 public _puzzleSecretvalue;
+    bool public _puzzleSecretValueSet = false;
    
     event LogContractConditionInitialized(address from, uint indexed amount, uint durationLimit, address CarolAddress);
     event LogWithdrawRemittenceAmountSuccessed(address indexed from, uint indexed withdrawalAmount);

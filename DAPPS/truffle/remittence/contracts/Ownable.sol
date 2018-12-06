@@ -6,7 +6,7 @@ pragma solidity ^0.4.25;
 * code style - all the state variables and internal functions starts with '_'.
  */
 contract Ownable {
-    address private _owner; // state variable are declared private. 
+    address public _owner; // state variable are declared private. 
                                 //use its public getter() to access it. 
 
     constructor() internal {

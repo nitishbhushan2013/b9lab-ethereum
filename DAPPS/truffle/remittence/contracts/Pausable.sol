@@ -7,7 +7,7 @@ import "./Ownable.sol";
  This inherent can only be invoked by the contract owner
 */
 contract Pausable is Ownable {
-    bool private _pause;
+    bool public _pause;
 
     event LogPause(address byWhom);
     event LogUnPause(address byWhom);
