@@ -1,88 +1,137 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.4.25; 
+import "./Pausable.sol";
 
-/**This contract is deployed by Alice with ether and inbuilt puzzle with two secret keys.
+/**
+* @title Remittence
+*@dev his contract is deployed by Alice with ether and inbuilt puzzle with two secret keys.
 Carol can only invoke Alice contract by submitting both the password. If password are correct then withdraw the
- ether. */
-contract Remittence {
-    address public owner;
-    address public Carol;
-    uint public amount;
-    uint totalWithdrawalAmount;
-    uint deadLineLimit;
-    bytes32 puzzleSecretvalue;
+ether. 
+@ code style - all the private state variables and private internal functions starts with '_'.
+**/
+contract Remittence is Pausable{
+    address private _owner;
+    address private _Carol;
+    uint private _amount;
+    uint private _durationLimit;
+    bytes32 private _puzzleSecretvalue;
+    bool private _puzzleSecretValueSet = false;
    
-    event LogContractInitialized(address indexed byWhom, uint amountDeposited);
-    event LogWithdrawRemittenceAmountInvoked(address from);
-    event LogWithdrawRemittenceAmountSuccessed(address indexed from, bytes32 password1, bytes32 password2, uint indexed totalWithdrawalAmount);
-    event LogWithdrawUnclaimedAmountCompleted(address byWhom, uint totalWithdrawalAmount);
+    event LogContractConditionInitialized(address from, uint indexed amount, uint durationLimit, address CarolAddress);
+    event LogWithdrawRemittenceAmountSuccessed(address indexed from, uint indexed withdrawalAmount);
+    event LogWithdrawUnclaimedAmountCompleted(address byWhom, uint indexed withdrawalAmount);
     event LogContractDistruct(address owner);
-    
-    modifier onlyByOwner(address _owner) {
-        require(_owner == owner, "address must be contract owner");
-        _;
-    }
-
-    modifier onlyAfterDeadLine {
-        require(now > deadLineLimit,"activity must occur after deadline");
-        _;
-    }
-    modifier onlyBeforeDeadLine {
-        require(now < deadLineLimit,"activity must occur before deadline");
-        _;
-    }
-
-    // Alice has deployed the contract with ether in it and puzzle
-    constructor (uint  _deadLineLimit, address _CarolAddress, bytes32 secretValue) public payable{
-        require(msg.value > 0, "ether amount must be greater than 0");
-
-        owner = msg.sender;
-        amount = msg.value; 
-        deadLineLimit = now + _deadLineLimit days;
-        Carol = _CarolAddress;
-        puzzleSecretvalue = secretValue;
-      
-        emit LogContractInitialized(owner, amount);
-    }
-
-    /**
-     * As per given specification, only Carol can call this function.
+  
+    /** 
+    @dev This modifier would allow function to be called only after certain time line duration
      */
-    function withdrawRemittenceAmount(bytes32 password_bob, bytes32 password_carol) public
-    onlyBeforeDeadLine
-    returns(bool) {
-        require(msg.sender == Carol, "only Carol can invoke this function");
-        require(amount > 0, "withdrawal amount must be more than 0.");
-        require(puzzleSecretvalue == keccak256(abi.encodePacked(password_bob,password_carol)),"password mismatch,not authorized to withdraw the amount");
-        emit LogWithdrawRemittenceAmountInvoked(msg.sender);
+    modifier onlyAfterDeadLine {
+        require(now > _durationLimit,"activity must occur after deadline");
+        _;
+    }
 
+    /** 
+    @dev This modifier would allow function to be called only on or before certain time line duration
+     */
+    modifier onlyOnBeforeDeadLine {
+        require(now <= _durationLimit,"activity must occur on or before deadline");
+        _;
+    }
+
+    constructor () public {
+        _owner = msg.sender;
+    }
+    
+     /** 
+     @dev This function would set the contract conditions and can be called only by the Alice, who is the contract owner.
+     @param secretValue hashed puzzle created by Alice
+     @param _timeLimit duration after which Alice can withdraw the ether 
+     @param _CarolAddress Carol address, who in turn would solve the puzzle
+      */
+    function setContractCondition(bytes32 secretValue, uint _timeLimit, address _CarolAddress ) 
+    public            
+    onlyWhenNotPaused //ensures function is available and can be safely invoked.
+    onlyOwner         // ensures only Owner of this contract can call this function.
+    payable           // this function can accept amount.
+    returns(bool) {
+        require(!_puzzleSecretValueSet, "puzzle has been set by the owner");  
+         
+        _durationLimit = now + _timeLimit * 1 seconds;
+        _puzzleSecretvalue = secretValue;
+        _amount = msg.value;
+        _Carol = _CarolAddress;
+        _puzzleSecretValueSet = true;
+         
+        emit LogContractConditionInitialized(msg.sender, _amount, _durationLimit, _CarolAddress);
+    }
+     
+
+     /** 
+     @dev This function must be invoked by Carol to solve the puzzle and withdraw the amount. 
+     @param password_bob Bob's one time password 
+     @param password_carol Carol's one time password
+     @return boolean to indicate the status of this call
+      */
+    function withdrawRemittenceAmount(bytes32 password_bob, bytes32 password_carol)
+    public
+    onlyWhenNotPaused    
+    onlyOnBeforeDeadLine
+    returns(bool) {
+        require(msg.sender == _Carol, "only Carol can invoke this function");
+        require(_puzzleSecretValueSet, "puzle is not set");
+        require(_amount > 0, "withdrawal amount must be more than 0.");
+        require(_puzzleSecretvalue == keccak256(abi.encodePacked(password_bob,password_carol)),"password mismatch,can not withdraw the amount");
+      
+        uint withdrawalAmount;
         //accounting
-        totalWithdrawalAmount = amount;
-        amount = 0; // counter reentrant attack
-        emit LogWithdrawRemittenceAmountSuccessed(msg.sender,password_bob,password_carol,totalWithdrawalAmount);
-        msg.sender.transfer(totalWithdrawalAmount);
+        withdrawalAmount = _amount;
+        _amount = 0; // counter reentrant attack
+        _puzzleSecretValueSet = false; // allow reusbility of the contract.
+        
+        emit LogWithdrawRemittenceAmountSuccessed(msg.sender,withdrawalAmount);
+        msg.sender.transfer(withdrawalAmount);
          
         return true;
     }
 
-    function withdrawUnclaimedEther() public
-    onlyByOwner(owner) // only by Alice as she only created and deployed this contract
+    /** 
+    @dev Alice can claim the unchallenged money after the set deadline
+     */
+    function withdrawUnclaimedEther()
+    public
+    onlyWhenNotPaused
+    onlyOwner 
     onlyAfterDeadLine
     returns(bool) {
-        require(amount > 0, "ether must be there to withdraw");
-      
-        emit LogWithdrawUnclaimedAmountCompleted(msg.sender, amount);
+        
+        require(_puzzleSecretValueSet, "puzzle is not set");
+        require(_amount > 0, "ether must be there to withdraw");
+        
+        uint withdrawalAmount;
         
         //accounting
-        totalWithdrawalAmount = amount; 
-        amount = 0;
-        msg.sender.transfer(totalWithdrawalAmount);
+        withdrawalAmount = _amount;
+        _amount = 0;
+        _puzzleSecretValueSet = false;
+         
+        emit LogWithdrawUnclaimedAmountCompleted(msg.sender, withdrawalAmount);
+         
+        msg.sender.transfer(withdrawalAmount);
         return true;
     }
 
-    function kill() public onlyByOwner(owner) returns(bool){
-        emit LogContractDistruct(owner);
-        selfdestruct(owner);
+    function getOwner() public view returns(address){
+        return _owner;
+    }
+
+    function kill()
+    public
+    onlyWhenPaused  // its safe to kill the contract 
+    onlyOwner
+    returns(bool){
+        emit LogContractDistruct(_owner);
+        selfdestruct(_owner);
         return true;
     }
+
 
 }
