@@ -94,7 +94,8 @@ contract RockPaperScissors is Pausable {
         movePlayed[_move] = true;
         emit LogPlayCompleted(msg.sender, ApproveMoves(_move));
 
-        _decideAndRewardTheWinner(); //let it fail fast by itself.
+        if(Players[Alice].hasPlayed == true && Players[Bob].hasPlayed == true) //lets see if contract can call
+             _decideAndRewardTheWinner(); 
         return true;
     }
 
