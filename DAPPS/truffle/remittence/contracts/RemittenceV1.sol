@@ -19,11 +19,11 @@ contract RemittenceV1 is Pausable{
         //uint index;
     }
     // Allow us to look the remittence details by remittence name
-    mapping(bytes => Remittence) public remittenceMap;
+    mapping(bytes => Remittence) public remittenceDetails;
    // bytes[] remittenceNameIndex;
 
     //ensure unique remittence name. 
-    mapping(bytes => bool) public uniqueNameMap;
+    mapping(bytes => bool) public inFlightRemittence;
 
     event LogContractConditionInitialized(address from, string indexed remittenceName, uint amount, uint deadLine);
     event LogWithdrawRemittenceAmountSuccessed(address indexed byWhom, string indexed remittenceName, uint indexed withdrawalAmount);
@@ -62,14 +62,18 @@ contract RemittenceV1 is Pausable{
     @param _duration duration after which Alice can withdraw the ether
     @param _CarolAddress Carol address, who in turn would solve the puzzle
     */
-    function setContractCondition(bytes _name, bytes32 _puzzle, uint _amount, uint _duration, address _CarolAddress) public {
-        require(!uniqueNameMap[_name], "This name is in active state"); 
+    function setRemittenceCondition(bytes _name, bytes32 _puzzle, uint _duration, address _CarolAddress)
+    public
+    onlyWhenNotPaused
+    payable
+    {
+        require(!inFlightRemittence[_name], "This name is in active state"); 
         Carol = _CarolAddress;
         uint timeLine = now + _duration * 1 seconds;
-        Remittence memory newRemittenceRecord = Remittence(_puzzle, _amount, timeLine, true);    
-        remittenceMap[_name] = newRemittenceRecord;
-        uniqueNameMap[_name] = true;
-        emit LogContractConditionInitialized(msg.sender, string(_name),_amount, timeLine);
+        Remittence memory newRemittenceRecord = Remittence(_puzzle, msg.value, timeLine, true);    
+        remittenceDetails[_name] = newRemittenceRecord;
+        inFlightRemittence[_name] = true;
+        emit LogContractConditionInitialized(msg.sender, string(_name),msg.value, timeLine);
     }
 
     /**
@@ -82,18 +86,18 @@ contract RemittenceV1 is Pausable{
     function withdrawRemittenceAmount(string memory remittenceName, bytes32 password_bob, bytes32 password_carol)
     public
     onlyWhenNotPaused
-    onlyOnBeforeDeadLine(remittenceMap[bytes(remittenceName)].deadLine)
+    onlyOnBeforeDeadLine(remittenceDetails[bytes(remittenceName)].deadLine)
     returns(bool) {
         require(msg.sender == Carol, "only Carol can invoke this function");
-        require(remittenceMap[bytes(remittenceName)].hasPuzzleSet, "puzzle is not set. This remittence is invalid");
-        require(remittenceMap[bytes(remittenceName)].puzzle == keccak256(abi.encodePacked(password_bob,password_carol)),"password mismatch,can not withdraw the amount");
+        require(remittenceDetails[bytes(remittenceName)].hasPuzzleSet, "puzzle is not set. This remittence is invalid");
+        require(remittenceDetails[bytes(remittenceName)].puzzle == keccak256(abi.encodePacked(password_bob,password_carol)),"password mismatch,can not withdraw the amount");
         uint withdrawalAmount;
         //accounting
-        withdrawalAmount = remittenceMap[bytes(remittenceName)].amount;
+        withdrawalAmount = remittenceDetails[bytes(remittenceName)].amount;
 
-        remittenceMap[bytes(remittenceName)].amount = 0; // counter reentrant attack
-        remittenceMap[bytes(remittenceName)].hasPuzzleSet = false; // allow reusbility of the contract.
-        uniqueNameMap[_name] = false; // Now Alice can use this name again in future remittence.
+        remittenceDetails[bytes(remittenceName)].amount = 0; // counter reentrant attack
+        remittenceDetails[bytes(remittenceName)].hasPuzzleSet = false; // allow reusbility of the contract.
+        inFlightRemittence[bytes(remittenceName)] = false; // Now Alice can use this name again in future remittence.
         emit LogWithdrawRemittenceAmountSuccessed(msg.sender, remittenceName, withdrawalAmount);
         msg.sender.transfer(withdrawalAmount);
         return true;
@@ -106,15 +110,15 @@ contract RemittenceV1 is Pausable{
     public
     onlyWhenNotPaused
     onlyOwner
-    onlyAfterDeadLine(remittenceMap[bytes(remittenceName)].deadLine)
+    onlyAfterDeadLine(remittenceDetails[bytes(remittenceName)].deadLine)
     returns(bool) {
-        require(remittenceMap[bytes(remittenceName)].hasPuzzleSet, "puzzle is not set or remittence has been successfully used by carol");
+        require(remittenceDetails[bytes(remittenceName)].hasPuzzleSet, "puzzle is not set or remittence has been successfully used by carol");
         uint withdrawalAmount;
         //accounting
-        withdrawalAmount = remittenceMap[bytes(remittenceName)].amount;
-        remittenceMap[bytes(remittenceName)].amount = 0;
-        remittenceMap[bytes(remittenceName)].hasPuzzleSet = false;
-        uniqueNameMap[_name] = false; // Now Alice can use this name again in future remittence.
+        withdrawalAmount = remittenceDetails[bytes(remittenceName)].amount;
+        remittenceDetails[bytes(remittenceName)].amount = 0;
+        remittenceDetails[bytes(remittenceName)].hasPuzzleSet = false;
+        inFlightRemittence[bytes(remittenceName)] = false; // Now Alice can use this name again in future remittence.
         emit LogWithdrawUnclaimedAmountCompleted(msg.sender, remittenceName, withdrawalAmount);
         msg.sender.transfer(withdrawalAmount);
         return true;
