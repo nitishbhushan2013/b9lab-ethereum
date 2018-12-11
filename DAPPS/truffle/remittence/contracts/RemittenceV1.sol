@@ -48,7 +48,7 @@ contract RemittenceV1 is Pausable{
     }
     
     constructor () public {
-        require(msg.sender == getOwner(), "only owner who deployed Ownable contract can deploy this contract ");
+        assert(msg.sender == getOwner(), "only owner who deployed Ownable contract can deploy this contract ");
     }
 
     
