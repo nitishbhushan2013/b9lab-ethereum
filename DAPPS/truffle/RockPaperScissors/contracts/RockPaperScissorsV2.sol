@@ -67,8 +67,8 @@ contract RockPaperScissorsV2 is Pausable {
     struct Game {
         PlayerDetail[2] player;
         GameStatus gameStatus;
-        uint availablePointer;
-        uint pendingPointer;
+        uint availablePointer;  // pattern to sync records with availableGamesList
+        uint pendingPointer;    // pattern to sync records with pendingGamesList
     }
     
      /**
@@ -115,7 +115,7 @@ contract RockPaperScissorsV2 is Pausable {
     @dev When both player play the same move (either valid or invalid), then total bet amount will be divided and store for each player.
         Player can invoke withdrawal () to receive it.
     */
-    mapping(address => uint) playerBlance;  
+    mapping(address => uint) public playerBlance;  
     
     
     event LogGameHasInitiated(address from, uint betAmount, GameStatus gameStatus);
@@ -132,7 +132,6 @@ contract RockPaperScissorsV2 is Pausable {
 
     
     constructor () public {
-        require(msg.sender == getOwner(), "only owner who deployed Ownable contract can deploy this contract ");
     }
     
     /**
@@ -146,8 +145,8 @@ contract RockPaperScissorsV2 is Pausable {
     onlyWhenNotPaused
     payable
     returns(bool) {
-        bytes32 uniqueGameIdentifier =  keccak256(abi.encodePacked(msg.sender, _secretMove, now));
-        require( playerGameStatusCount[msg.sender].availableCount <6, "you have already initiated 2 games. Please complete at least one to initiate new game");
+        bytes32 uniqueGameIdentifier =  keccak256(abi.encodePacked(msg.sender, _secretMove, bet, now));
+        require( playerGameStatusCount[msg.sender].availableCount <6, "you have already initiated 5 games. Please complete at least one to initiate new game");
         require(!isGameAvailable(uniqueGameIdentifier), "this game is alraedy active");
         
         // set the first player details
@@ -157,7 +156,7 @@ contract RockPaperScissorsV2 is Pausable {
         // This status would indicates availability of this game to any other player
         games[uniqueGameIdentifier].gameStatus = GameStatus.Available;
      
-        playerGameStatusCount[msg.sender].availableCount++;
+        playerGameStatusCount[msg.sender].availableCount++; // this will kep track of 'open' games for this player. 
         games[uniqueGameIdentifier].availablePointer = availableGamesList.push(uniqueGameIdentifier) -1;
        
         availableGames[uniqueGameIdentifier] = true;
@@ -199,7 +198,7 @@ contract RockPaperScissorsV2 is Pausable {
         games[_gameIdentifier].gameStatus = GameStatus.Pending;
         
         games[_gameIdentifier].pendingPointer = pendingGamesList.push(_gameIdentifier) -1;
-        removeAvailableGame(_gameIdentifier);
+        _removeAvailableGame(_gameIdentifier);
         emit LogOtherPlayerPlayed(msg.sender, _bet, ApproveMoves(_move), GameStatus.Pending);
 
         return true;
@@ -338,8 +337,8 @@ contract RockPaperScissorsV2 is Pausable {
         availableGames[_gameIdentifier] = false;
         
         playerGameStatusCount[msg.sender].availableCount --;
-        removeAvailableGame(_gameIdentifier);
-        removePendingGame(_gameIdentifier);
+        _removeAvailableGame(_gameIdentifier);
+        _removePendingGame(_gameIdentifier);
         resetGameFlag = false;
         emit LogGameReset("Game has reset");
         return true;
@@ -350,6 +349,7 @@ contract RockPaperScissorsV2 is Pausable {
      */
     function getAllAvailableGames()
     public
+    view
     onlyWhenNotPaused
     returns (bytes32[] memory){
         return availableGamesList;
@@ -361,6 +361,7 @@ contract RockPaperScissorsV2 is Pausable {
      */
     function getAllPendingGames()
     public
+    view
     onlyWhenNotPaused
     returns (bytes32[] memory){
         return pendingGamesList;
@@ -374,6 +375,7 @@ contract RockPaperScissorsV2 is Pausable {
      */
     function getBetAmountForThisGame(bytes32 gameIdentifier)
     public
+    view
     onlyWhenNotPaused
     returns(uint) {
         require(isGameAvailable(gameIdentifier), "this game is not active");
@@ -384,7 +386,10 @@ contract RockPaperScissorsV2 is Pausable {
      *@dev this function will remove a game identifier from availableGamesList and sync the record with games data structure
      *@param _gameIdentifier
      */
-    function removeAvailableGame(bytes32 _gameIdentifier) public returns(bool) {
+    function _removeAvailableGame(bytes32 _gameIdentifier) 
+    private 
+    onlyWhenNotPaused
+    returns(bool) {
         uint rowToDelete = games[_gameIdentifier].availablePointer;
         bytes32 keyToMove = availableGamesList[availableGamesList.length -1];
         
@@ -401,7 +406,10 @@ contract RockPaperScissorsV2 is Pausable {
      *@dev this function will remove a game identifier from pendingGamesList and sync the record with games data structure
      *@param _gameIdentifier
      */
-    function removePendingGame(bytes32 _gameIdentifier) public returns(bool) {
+    function _removePendingGame(bytes32 _gameIdentifier)
+    private
+    onlyWhenNotPaused
+    returns(bool) {
         uint rowToDelete = games[_gameIdentifier].pendingPointer;
         bytes32 keyToMove = pendingGamesList[pendingGamesList.length -1];
         
