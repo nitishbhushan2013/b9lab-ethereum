@@ -10,12 +10,9 @@ contract Splitter2{
     mapping(address => uint) balance;
  
     event LogAddressInitialized(address Alice, address Bob, address Carol);
-
-     // commented below as it does not reflect any state change.
-    //event LogDepositMode(bytes32 mode); // split mode or single mode
     event LogFundsDeposited(address indexed from, uint amount);
     event LogFundsWithdrawn(address indexed from, uint amount);
-    event LogFundSplit(address indexed from, uint amount, address indexed receiver1, address indexed receiver2);
+    event LogFundSplit(address indexed from, uint initialAmount, address indexed receiver1, address indexed receiver2, uint receivedAmount);
     event LogLeftOverFundSent(address indexed to, uint amount);
     event LogContractDistruct(address owner);
    
@@ -40,10 +37,10 @@ contract Splitter2{
         require(msg.value > 0, "deposit amount must be positive number"); 
         require(msg.sender == Alice, "Only Aice can invoke this function"); // this is tight binding with the given specification. 
         
-        uint splitAmount = msg.value/2;  
-        uint leftOverAmount = msg.value - (2*splitAmount);
+        uint splitAmount = msg.value / 2;  
+        uint leftOverAmount = msg.value - (2 * splitAmount);
 
-        emit LogFundSplit(msg.sender,splitAmount,Bob, Carol);
+        emit LogFundSplit(msg.sender, msg.value, Bob, Carol, splitAmount);
    
         balance[Bob] += splitAmount;
         balance[Carol] += splitAmount;

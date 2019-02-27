@@ -9,12 +9,12 @@ ether.
 @ code style - all the private state variables and private internal functions starts with '_'.
 **/
 contract Remittence is Pausable{
-    address public _owner;
     address public _Carol;
     uint public _amount;
     uint public _durationLimit;
     bytes32 public _puzzleSecretvalue;
     bool public _puzzleSecretValueSet = false;
+
    
     event LogContractConditionInitialized(address from, uint indexed amount, uint durationLimit, address CarolAddress);
     event LogWithdrawRemittenceAmountSuccessed(address indexed from, uint indexed withdrawalAmount);
@@ -38,7 +38,7 @@ contract Remittence is Pausable{
     }
 
     constructor () public {
-        _owner = msg.sender;
+        require(msg.sender == getOwner(), "only owner who deployed Ownable contract can deploy this contract ");
     }
     
      /** 
@@ -119,17 +119,13 @@ contract Remittence is Pausable{
         return true;
     }
 
-    function getOwner() public view returns(address){
-        return _owner;
-    }
-
     function kill()
     public
     onlyWhenPaused  // its safe to kill the contract 
     onlyOwner
     returns(bool){
-        emit LogContractDistruct(_owner);
-        selfdestruct(_owner);
+        emit LogContractDistruct(msg.sender);
+        selfdestruct(msg.sender);
         return true;
     }
 

@@ -1,0 +1,19 @@
+{
+  "name": "metacoin",
+  "version": "0.0.1",
+  "description": "Example tests sans Truffle tests",
+  "scripts": {
+    "test": "mocha"
+  },
+  "dependencies": {
+    "bluebird": "^3.5.1",
+    "truffle-contract": "^3.0.6",
+    "web3": "0.20.7"
+  },
+  "devDependencies": {
+    "assert-plus": "^1.0.0",
+    "ganache-cli": "6.1.8",
+    "mocha": "^5.2.0",
+    "truffle": "4.1.13"
+  }
+}
